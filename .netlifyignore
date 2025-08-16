@@ -1,0 +1,14 @@
+# Excluir node_modules excepto Prisma
+node_modules
+!node_modules/@prisma
+!node_modules/prisma
+
+# Excluir archivos de desarrollo
+.env
+*.md
+.git
+src/
+public/
+
+# Mantener solo lo necesario para las funciones
+!netlify/functions/
