@@ -1,0 +1,133 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum RolUsuario {
+  ADMIN
+  OPERADOR
+  VISITANTE
+}
+
+enum EstadoEquipo {
+  DISPONIBLE
+  EN_USO
+  MANTENIMIENTO
+  BAJA
+}
+
+enum EstadoSolicitud {
+  PENDIENTE
+  APROBADA
+  RECHAZADA
+  COMPLETADA
+  CANCELADA
+}
+
+model Categoria {
+  id          Int       @id @default(autoincrement())
+  nombre      String    @db.VarChar(100)
+  descripcion String?   @db.Text
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt      @map("updated_at")
+  equipos     Equipo[]
+
+  @@map("categorias")
+}
+
+model Dependencia {
+  id          Int       @id @default(autoincrement())
+  nombre      String    @db.VarChar(120)
+  descripcion String?   @db.Text
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt      @map("updated_at")
+  equipos     Equipo[]
+  solicitudes Solicitud[]
+
+  @@map("dependencias")
+}
+
+model Permiso {
+  id          Int               @id @default(autoincrement())
+  clave       String            @unique
+  descripcion String?
+  usuarios    UsuarioPermiso[]
+
+  @@map("permisos")
+}
+
+model Usuario {
+  id                   Int               @id @default(autoincrement())
+  nombre               String
+  email                String            @unique
+  rol                  RolUsuario        @default(OPERADOR)
+  createdAt            DateTime          @default(now()) @map("created_at")
+  updatedAt            DateTime          @updatedAt      @map("updated_at")
+  permisos             UsuarioPermiso[]
+  solicitudes          Solicitud[]       @relation("SolicitudesUsuario")
+  solicitudesAprobadas Solicitud[]       @relation("SolicitudesAprobador")
+
+  @@map("users")
+}
+
+model UsuarioPermiso {
+  id        Int     @id @default(autoincrement())
+  usuario   Usuario @relation(fields: [usuarioId], references: [id])
+  usuarioId Int
+  permiso   Permiso @relation(fields: [permisoId], references: [id])
+  permisoId Int
+
+  @@unique([usuarioId, permisoId])
+  @@map("usuario_permisos")
+}
+
+model Equipo {
+  id             Int             @id @default(autoincrement())
+  nombre         String
+  codigo         String          @unique
+  categoria      Categoria       @relation(fields: [categoriaId], references: [id])
+  categoriaId    Int
+  dependencia    Dependencia?    @relation(fields: [dependenciaId], references: [id])
+  dependenciaId  Int?
+  estado         EstadoEquipo    @default(DISPONIBLE)
+  serie          String?         @db.VarChar(120)
+  descripcion    String?
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt      @map("updated_at")
+  solicitudItems SolicitudItem[]
+
+  @@map("equipos")
+}
+
+model Solicitud {
+  id            Int             @id @default(autoincrement())
+  motivo        String?
+  estado        EstadoSolicitud @default(PENDIENTE)
+  solicitante   Usuario         @relation("SolicitudesUsuario", fields: [solicitanteId], references: [id])
+  solicitanteId Int
+  aprobador     Usuario?        @relation("SolicitudesAprobador", fields: [aprobadorId], references: [id])
+  aprobadorId   Int?
+  dependencia   Dependencia?    @relation(fields: [dependenciaId], references: [id])
+  dependenciaId Int?
+  createdAt     DateTime        @default(now()) @map("created_at")
+  updatedAt     DateTime        @updatedAt      @map("updated_at")
+  items         SolicitudItem[]
+
+  @@map("solicitudes")
+}
+
+model SolicitudItem {
+  id          Int       @id @default(autoincrement())
+  solicitud   Solicitud @relation(fields: [solicitudId], references: [id])
+  solicitudId Int
+  equipo      Equipo    @relation(fields: [equipoId], references: [id])
+  equipoId    Int
+  cantidad    Int       @default(1)
+
+  @@unique([solicitudId, equipoId])
+  @@map("solicitud_items")
+}
